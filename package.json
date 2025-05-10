@@ -11,10 +11,18 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@craftzdog/react-native-buffer": "^6.0.5",
     "@expo/vector-icons": "^14.1.0",
+    "@react-native-async-storage/async-storage": "2.1.2",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
+    "@supabase/realtime-js": "^2.11.7",
+    "@supabase/supabase-js": "^2.49.4",
+    "@tradle/react-native-http": "^2.0.1",
+    "babel-plugin-module-resolver": "^5.0.2",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^6.0.3",
     "expo": "~53.0.9",
     "expo-blur": "~14.1.4",
     "expo-constants": "~17.1.6",
@@ -28,22 +36,35 @@
     "expo-symbols": "~0.4.4",
     "expo-system-ui": "~5.0.7",
     "expo-web-browser": "~14.1.6",
+    "https-browserify": "^1.0.0",
+    "node-libs-react-native": "^1.2.1",
+    "path-browserify": "^1.0.1",
+    "process": "^0.11.10",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
+    "react-native-crypto": "^2.2.0",
+    "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "~2.24.0",
+    "react-native-get-random-values": "^1.11.0",
+    "react-native-polyfill-globals": "^3.1.0",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.10.0",
+    "react-native-tcp": "^4.0.0",
+    "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.20.0",
-    "react-native-webview": "13.13.5"
+    "react-native-webview": "13.13.5",
+    "stream-browserify": "^3.0.0",
+    "text-encoding": "^0.7.0",
+    "web-streams-polyfill": "^4.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~19.0.10",
-    "typescript": "~5.8.3",
     "eslint": "^9.25.0",
-    "eslint-config-expo": "~9.2.0"
+    "eslint-config-expo": "~9.2.0",
+    "typescript": "~5.8.3"
   },
   "private": true
 }

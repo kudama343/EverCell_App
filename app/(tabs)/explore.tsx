@@ -1,110 +1,158 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, StyleSheet, View, Text, SafeAreaView, ScrollView } from 'react-native';
+import { supabase } from '@/utils/supabase';
 
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+export default function History() {
+  const [predictions, setPredictions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-export default function TabTwoScreen() {
+  useEffect(() => {
+    // Function to fetch data from Supabase
+    const fetchData = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('prediction')
+          .select('future_voltage, forecasted_time');
+        
+        if (error) {
+          throw error;
+        }
+
+        // Format the data for display
+        const formattedData = data.map(item => ({
+          ...item,
+          datetime: item.forecasted_time.toLocaleString() // Format the timestamp
+        }));
+
+        setPredictions(formattedData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data: ", error);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
+    <SafeAreaView style={styles.safeArea}>
+      {/* Header Section */}
+      <View style={styles.headerContainer}>
+        {/* E-scooter background image */}
+        <Image
+          source={require('@/assets/images/escooterbg.png')}
+          style={styles.reactLogo}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+        
+        {/* Top Section with Voltage and Time */}
+        <View style={styles.topSection}>
+          <Text style={styles.DataLogText}>Data Log</Text>
+        </View>
+      </View>
+
+      {/* Scrollable section to display the data */}
+      <View style={styles.bottomRedSection}>
+        {loading ? (
+          <Text style={styles.noDataText}>Loading data...</Text>
+        ) : (
+          <ScrollView>
+            {/* Check if data is available */}
+            {predictions.length > 0 ? (
+              predictions.map((prediction, index) => (
+                <View key={index} style={styles.predictionContainer}>
+                  <Text style={styles.predictionRowText}>{prediction.datetime}</Text>
+                  <Text style={styles.predictionRowText2}>{prediction.future_voltage.toFixed(2)}V</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noDataText}>No data available</Text>
+            )}
+          </ScrollView>
+        )}
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',  // Background color for safe area
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  headerContainer: {
+    position: 'relative',
+    height: 350, // Adjust height based on design
+    width: '100%',
+    marginBottom: -20, // Reduce space between header and bottom section
+  },
+  reactLogo: {
+    height: 350,
+    width: '100%',
+    position: 'absolute', // Ensures it sits behind the content
+    bottom: 0,
+    left: 0,
+  },
+  topSection: {
+    flex: 1,
+    justifyContent: 'center', // Vertically center the text
+    alignItems: 'center',     // Horizontally center the text
+    position: 'absolute',     // Ensures it's over the image
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  DataLogText: {
+    fontSize: 60,
+    fontWeight: 'bold',
+    color: '#FFF',
+    textAlign: 'center',
+  },
+  bottomRedSection: {
+    backgroundColor: '#1F9753',  // Green background
+    padding: 20,
+    borderTopLeftRadius: 25,     // Top-left corner radius
+    borderTopRightRadius: 25,    // Top-right corner radius
+    marginTop: -10,              // Merge into header section, negative margin to remove space
+    flex: 1,
+  },
+  predictionText: {
+    fontSize: 18,
+    color: '#000',
+    marginBottom: 5,
+  },
+  noDataText: {
+    fontSize: 18,
+    color: '#FFF',
+    textAlign: 'center',
+    marginVertical: 20,
+  },
+  predictionContainer: {
+    flexDirection: 'row',    // Arrange items in a row
+    justifyContent: 'space-between', // Distribute space between date and voltage
+    alignItems: 'center',    // Vertically center the items
+    backgroundColor: '#fff',  // White background for each data block
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 10, // Shadow for Android
+  },
+  predictionRowText: {
+    fontSize: 18,
+    color: '#000',
+    textAlign: 'left', // Center text horizontally in its column
+   // Ensure both texts take equal space
+  },
+  predictionRowText2: {
+    fontSize: 20,
+    color: '#000', 
+    textAlign: 'right', // Center text horizontally in its column
+    flex: 1, // Ensure both texts take equal space
+    fontWeight: 'bold',
+    marginRight: 20
   },
 });
