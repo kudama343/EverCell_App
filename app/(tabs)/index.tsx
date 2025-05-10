@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Image, StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, RefreshControl, Modal } from 'react-native';
+import { Image, StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, RefreshControl, Modal, Animated } from 'react-native';
 import { supabase } from '@/utils/supabase';
 import { useRouter } from 'expo-router';
 
@@ -7,19 +7,37 @@ export default function HomeScreen() {
   const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [voltageModalVisible, setVoltageModalVisible] = useState(false); // Voltage modal state
-  const [healthModalVisible, setHealthModalVisible] = useState(false); // Health modal state
+  const [voltageModalVisible, setVoltageModalVisible] = useState(false);
+  const [healthModalVisible, setHealthModalVisible] = useState(false);
+  const [hasNewData, setHasNewData] = useState(false);
+  const [notificationOpacity] = useState(new Animated.Value(0));
+  const [loadingModal, setLoadingModal] = useState(false);
+  const [statusModal, setStatusModal] = useState(false);
   const router = useRouter(); 
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (showLoading = false) => {
+    if (showLoading) {
+      setLoadingModal(true);
+      // Set 3 second delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    } else {
+      setLoading(true);
+    }
+    
     try {
       const { data, error } = await supabase
         .from('prediction')
-        .select('future_voltage, forecasted_time');
+        .select('future_voltage, forecasted_time')
+        .order('id', { ascending: false });
       
       if (error) throw error;
       setPredictions(data);
+      setHasNewData(false); // Reset notification state after fetching
+      
+      if (showLoading) {
+        setLoadingModal(false);
+        setStatusModal(true); // Show status modal after loading
+      }
     } catch (error) {
       console.error("Error fetching data: ", error);
     } finally {
@@ -30,7 +48,51 @@ export default function HomeScreen() {
 
   useEffect(() => {
     fetchData();
+
+    // Set up Supabase realtime subscription
+    const subscription = supabase
+      .channel('prediction-changes')
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'prediction' 
+        }, 
+        (payload) => {
+          console.log('New prediction inserted:', payload);
+          setHasNewData(true);
+          // Animate notification appearance
+          showNotification();
+        }
+      )
+      .subscribe();
+
+    // Clean up subscription when component unmounts
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, []);
+
+  // Animation function for notification appearance
+  const showNotification = () => {
+    Animated.sequence([
+      Animated.timing(notificationOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true
+      }),
+      Animated.timing(notificationOpacity, {
+        toValue: 0.8,
+        duration: 200,
+        useNativeDriver: true
+      }),
+      Animated.timing(notificationOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true
+      })
+    ]).start();
+  };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -46,9 +108,20 @@ export default function HomeScreen() {
     ? "A potential issue with the battery's voltage is predicted; maintenance are advised."
     : "The battery's forecasted voltage is within the normal range, no immediate action is required.";
   const bottomSectionColor = isVoltageLow ? '#F45A5A' : '#1F9753';
+  
   return (
     <SafeAreaView style={styles.safeArea}>
-      
+      {/* Notification Button */}
+      {hasNewData && (
+        <Animated.View style={[styles.notificationContainer, { opacity: notificationOpacity }]}>
+          <TouchableOpacity 
+            style={styles.newDataButton}
+            onPress={() => fetchData(true)}
+          >
+            <Text style={styles.newDataButtonText}>New Prediction Available!</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -140,95 +213,196 @@ export default function HomeScreen() {
           </View>
         </Modal>
         
-        {/* Battery Status Modal */}
+        {/* Loading Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={loadingModal}
+          onRequestClose={() => setLoadingModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.loadingContainer}>
+              <View style={styles.loadingIndicator}>
+                <Image
+                  source={require('@/assets/images/escooterbg.png')} 
+                  style={styles.loadingLogo}
+                />
+                <Animated.View style={styles.spinner}>
+                  {[...Array(12)].map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.spinnerDot,
+                        {
+                          transform: [
+                            { rotate: `${i * 30}deg` },
+                            { translateY: -20 },
+                          ],
+                          opacity: 1 - (i * 0.08),
+                        },
+                      ]}
+                    />
+                  ))}
+                </Animated.View>
+              </View>
+              <Text style={styles.loadingText}>Updating battery prediction...</Text>
+            </View>
+          </View>
+        </Modal>
         
+        {/* Status Update Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={statusModal}
+          onRequestClose={() => setStatusModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.statusContainer, { backgroundColor: isVoltageLow ? '#F45A5A' : '#1F9753' }]}>
+              <Text style={styles.statusTitle}>
+                {isVoltageLow ? 'Battery Needs Maintenance' : 'Battery Health Status: Good'}
+              </Text>
+              <View style={styles.statusIconContainer}>
+                {isVoltageLow ? (
+                  <View style={styles.warningIcon}>
+                    <Text style={styles.iconText}>!</Text>
+                  </View>
+                ) : (
+                  <View style={styles.checkIcon}>
+                    <Text style={styles.iconText}>✓</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.statusMessage}>
+                {isVoltageLow 
+                  ? 'Your e-scooter battery is predicted to fall below the recommended voltage level. Schedule maintenance soon to prevent performance issues.'
+                  : 'Your e-scooter battery is predicted to maintain a healthy voltage level. No immediate action is required.'}
+              </Text>
+              <Text style={styles.voltageReadout}>Forecasted Voltage: {futureVoltage} V</Text>
+              <TouchableOpacity 
+                style={[styles.statusBtn, { backgroundColor: isVoltageLow ? '#9D3A3A' : '#176B3A' }]} 
+                onPress={() => setStatusModal(false)}
+              >
+                <Text style={styles.OKbtntext}>Got it</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const additionalStyles = {
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  spinner: {
+    width: 40,
+    height: 40,
+    position: 'absolute',
+    alignSelf: 'center',
+  },
+  spinnerDot: {
+    position: 'absolute',
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#1F9753',
+  },
   loadingContainer: {
+    width: '80%',
     backgroundColor: 'white',
     borderRadius: 15,
-    padding: 25,
+    padding: 30,
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
-  spinnerOuter: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    borderWidth: 6,
-    borderColor: '#1F9753',
-    borderTopColor: '#f0f0f0',
+  loadingIndicator: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  loadingLogo: {
+    width: 60,
+    height: 60,
+    resizeMode: 'contain',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#444',
+    textAlign: 'center',
+  },
+  statusContainer: {
+    width: '80%',
+    borderRadius: 15,
+    padding: 20,
+    alignItems: 'center',
+  },
+  statusTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  statusIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
-  spinnerInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-  },
-  loadingText: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginTop: 10,
-    color: '#ffffff',
-  },
-  statusIconContainer: {
-    alignItems: 'center',
-    marginVertical: 15,
-  },
-  statusIcon: {
+  warningIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
+    backgroundColor: '#F45A5A',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  healthyIcon: {
+  checkIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#1F9753',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  warningIcon: {
-    backgroundColor: '#F45A5A',
-  },
-  statusIconText: {
+  iconText: {
+    fontSize: 40,
+    fontWeight: 'bold',
     color: 'white',
-    fontSize: 30,
-    fontWeight: 'bold',
   },
-  statusText: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  statusMessage: {
+    fontSize: 16,
+    color: 'white',
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
+    lineHeight: 22,
   },
-  healthyText: {
-    color: '#1F9753',
-  },
-  warningText: {
-    color: '#F45A5A',
-  },
-  voltageText: {
+  voltageReadout: {
     fontSize: 18,
-    fontWeight: '500',
-    marginVertical: 10,
-    textAlign: 'center',
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 20,
   },
-};
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fff',
+  statusBtn: {
+    paddingHorizontal: 50,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 10,
   },
   headerContainer: {
     position: 'relative',
