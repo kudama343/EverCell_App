@@ -7,33 +7,34 @@ export default function History() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Function to fetch data from Supabase
-    const fetchData = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('prediction')
-          .select('future_voltage, forecasted_time');
-        
-        if (error) {
-          throw error;
-        }
-
-        // Format the data for display
-        const formattedData = data.map(item => ({
-          ...item,
-          datetime: item.forecasted_time.toLocaleString() // Format the timestamp
-        }));
-
-        setPredictions(formattedData);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching data: ", error);
-        setLoading(false);
+  // Function to fetch data from Supabase
+  const fetchData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('prediction')
+        .select('future_voltage, forecasted_time, id') // Include id for sorting by insertion
+        .order('id', { ascending: false }); // Order by id descending (newest first)
+      
+      if (error) {
+        throw error;
       }
-    };
 
-    fetchData();
-  }, []);
+      // Format the data for display
+      const formattedData = data.map(item => ({
+        ...item,
+        datetime: item.forecasted_time.toLocaleString() // Format the timestamp
+      }));
+
+      setPredictions(formattedData);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching data: ", error);
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, []);
 
   return (
     <SafeAreaView style={styles.safeArea}>

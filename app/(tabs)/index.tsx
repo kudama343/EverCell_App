@@ -4,16 +4,18 @@ import { supabase } from '@/utils/supabase';
 import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
-  const [predictions, setPredictions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [voltageModalVisible, setVoltageModalVisible] = useState(false);
-  const [healthModalVisible, setHealthModalVisible] = useState(false);
-  const [hasNewData, setHasNewData] = useState(false);
-  const [notificationOpacity] = useState(new Animated.Value(0));
-  const [loadingModal, setLoadingModal] = useState(false);
-  const [statusModal, setStatusModal] = useState(false);
-  const router = useRouter(); 
+  
+const [predictions, setPredictions] = useState([]);
+const [loading, setLoading] = useState(true);
+const [refreshing, setRefreshing] = useState(false);
+const [voltageModalVisible, setVoltageModalVisible] = useState(false);
+const [healthModalVisible, setHealthModalVisible] = useState(false);
+const [reminderModalVisible, setReminderModalVisible] = useState(false);
+const [hasNewData, setHasNewData] = useState(false);
+const [notificationOpacity] = useState(new Animated.Value(0));
+const [loadingModal, setLoadingModal] = useState(false);
+const [statusModal, setStatusModal] = useState(false);
+const router = useRouter();
 
   const fetchData = async (showLoading = false) => {
     if (showLoading) {
@@ -179,11 +181,43 @@ export default function HomeScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Future Battery Health Status</Text>
+              <Text style={styles.modalText}>
+                <Text style={{ fontWeight: 'bold' }}>Healthy:</Text> The battery is operating optimally with no immediate maintenance required.
+              </Text>
+              <Text style={styles.modalText}>
+                <Text style={{ fontWeight: 'bold' }}>Need Maintenance:</Text> The battery may need attention to maintain its performance. Please inspect and perform necessary maintenance.
+              </Text>
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity style={styles.infoButton} onPress={() => {
+                  setVoltageModalVisible(false);
+                  setTimeout(() => {
+                    // Show the reminder modal after closing the current one
+                    setReminderModalVisible(true);
+                  }, 300);
+                }}>
+                  <Text style={styles.infoButtonText}>ℹ️ Info</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.OKbtn} onPress={() => setVoltageModalVisible(false)}>
+                  <Text style={styles.OKbtntext}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={reminderModalVisible}
+          onRequestClose={() => setReminderModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
               <Text style={styles.modalTitle}>Reminder</Text>
               <Text style={styles.modalText}>
                 IEC 62660-3 is an international standard for lithium-ion batteries in electric vehicles. Maintaining a Nominal voltage of 36V or above ensures optimal performance, longevity, and reliability for your e-scooter's battery.
               </Text>
-              <TouchableOpacity style={styles.OKbtn} onPress={() => setVoltageModalVisible(false)}>
+              <TouchableOpacity style={styles.OKbtn} onPress={() => setReminderModalVisible(false)}>
                 <Text style={styles.OKbtntext}>OK</Text>
               </TouchableOpacity>
             </View>
@@ -199,12 +233,9 @@ export default function HomeScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Future Battery Health Status</Text>
+              <Text style={styles.modalTitle}>Forecasted Time</Text>
               <Text style={styles.modalText}>
-                <Text style={{ fontWeight: 'bold' }}>Healthy:</Text> The battery is operating optimally with no immediate maintenance required.
-              </Text>
-              <Text style={styles.modalText}>
-                <Text style={{ fontWeight: 'bold' }}>Need Maintenance:</Text> The battery may need attention to maintain its performance. Please inspect and perform necessary maintenance.
+                This is the predicted time when the battery health reading will reach the forecasted voltage level. For Li-ion battery packs used in e-scooters, this forecast helps you plan maintenance and charging schedules to optimize battery life.
               </Text>
               <TouchableOpacity style={styles.OKbtn} onPress={() => setHealthModalVisible(false)}>
                 <Text style={styles.OKbtntext}>OK</Text>
@@ -223,11 +254,7 @@ export default function HomeScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.loadingContainer}>
               <View style={styles.loadingIndicator}>
-                <Image
-                  source={require('@/assets/images/escooterbg.png')} 
-                  style={styles.loadingLogo}
-                />
-                <Animated.View style={styles.spinner}>
+                <View style={styles.spinnerContainer}>
                   {[...Array(12)].map((_, i) => (
                     <View
                       key={i}
@@ -236,14 +263,14 @@ export default function HomeScreen() {
                         {
                           transform: [
                             { rotate: `${i * 30}deg` },
-                            { translateY: -20 },
+                            { translateY: -30 },
                           ],
                           opacity: 1 - (i * 0.08),
                         },
                       ]}
                     />
                   ))}
-                </Animated.View>
+                </View>
               </View>
               <Text style={styles.loadingText}>Updating battery prediction...</Text>
             </View>
@@ -304,44 +331,51 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
   },
-  spinnerDot: {
-    position: 'absolute',
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: '#1F9753',
-  },
-  loadingContainer: {
-    width: '80%',
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 30,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  loadingIndicator: {
-    position: 'relative',
-    width: 100,
-    height: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-  },
-  loadingLogo: {
-    width: 60,
-    height: 60,
-    resizeMode: 'contain',
-  },
-  loadingText: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#444',
-    textAlign: 'center',
-  },
+  
+ spinnerContainer: {
+  width: 70,
+  height: 70,
+  justifyContent: 'center',
+  alignItems: 'center',
+  position: 'relative',
+},
+spinnerDot: {
+  position: 'absolute',
+  width: 8,
+  height: 8,
+  borderRadius: 4,
+  backgroundColor: '#1F9753',
+},
+ loadingContainer: {
+  width: '90%',
+  backgroundColor: 'white',
+  borderRadius: 15,
+  padding: 30,
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.25,
+  shadowRadius: 3.84,
+  elevation: 5,
+},
+loadingIndicator: {
+  width: 140,
+  height: 140,
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: 20,
+},
+loadingLogo: {
+  width: 80,
+  height: 80,
+  resizeMode: 'contain',
+},
+loadingText: {
+  fontSize: 20,
+  fontWeight: '500',
+  color: '#444',
+  textAlign: 'center',
+},
   statusContainer: {
     width: '80%',
     borderRadius: 15,
@@ -448,6 +482,22 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginTop: 10,
   },
+  modalButtonRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  width: '100%',
+  marginTop: 10,
+},
+infoButton: {
+  backgroundColor: '#4A90E2',
+  paddingHorizontal: 20,
+  paddingVertical: 10,
+  borderRadius: 5,
+},
+infoButtonText: {
+  color: 'white',
+  fontWeight: 'bold',
+},
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
